@@ -1,3 +1,160 @@
-import React,{useEffect,useMemo,useState} from 'react';import{createRoot}from'react-dom/client';import'./styles.css';
-const seed=[{id:1,title:'The Extended Mind',authors:'Clark, A. & Chalmers, D.',year:1998,venue:'Analysis',tags:['具身认知','经典'],abstract:'本文提出心智延展论：当外部环境稳定地承担认知功能时，心智边界可以超越头脑与身体。',status:'阅读中',cite:'Clark, A. & Chalmers, D. (1998). The Extended Mind. Analysis.'},{id:2,title:'Situated Learning',authors:'Lave, J. & Wenger, E.',year:1991,venue:'Cambridge University Press',tags:['学习科学','社会'],abstract:'学习发生在真实情境的参与过程中，知识与共同体实践不可分割。',status:'待读',cite:'Lave, J. & Wenger, E. (1991). Situated Learning.'},{id:3,title:'Designing with Data',authors:'Miller, S.',year:2022,venue:'MIT Press',tags:['设计研究','方法'],abstract:'一套面向设计师的数据研究方法，讨论如何把定性洞察转化为可行动的设计决策。',status:'已读',cite:'Miller, S. (2022). Designing with Data.'}];const read=()=>{try{return JSON.parse(localStorage.getItem('research-library'))||seed}catch{return seed}};
-function App(){const[items,setItems]=useState(read);const[selected,setSelected]=useState(1);const[query,setQuery]=useState('');const[tag,setTag]=useState('全部');const[show,setShow]=useState(false);const[notice,setNotice]=useState('');const[form,setForm]=useState({title:'',authors:'',year:'2024',venue:'',abstract:'',tags:''});useEffect(()=>localStorage.setItem('research-library',JSON.stringify(items)),[items]);const tags=['全部',...new Set(items.flatMap(x=>x.tags))];const filtered=useMemo(()=>items.filter(x=>(tag==='全部'||x.tags.includes(tag))&&(`${x.title}${x.authors}${x.abstract}`.toLowerCase().includes(query.toLowerCase()))),[items,tag,query]);const cur=items.find(x=>x.id===selected)||items[0];const update=(k,v)=>setItems(items.map(x=>x.id===cur.id?{...x,[k]:v}:x));const add=()=>{if(!form.title)return;const p={...form,id:Date.now(),year:+form.year,tags:form.tags.split(',').map(x=>x.trim()).filter(Boolean),status:'待读',cite:`${form.authors} (${form.year}). ${form.title}. ${form.venue}.`};setItems([...items,p]);setSelected(p.id);setForm({title:'',authors:'',year:'2024',venue:'',abstract:'',tags:''});setShow(false);setNotice('文献已加入研究库')};const bib=()=>{navigator.clipboard?.writeText(cur.cite);setNotice('引用文本已复制')};const download=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([items.map(x=>x.cite).join('\n')],{type:'text/plain'}));a.download='references.txt';a.click();setNotice('引用列表已导出')};return <div className="app"><aside><div className="logo"><span>∴</span> LITERATURE</div><div className="library-head"><span>我的研究库</span><strong>{items.length}<small> 篇文献</small></strong></div><nav><button className="active">▤ <span>所有文献</span><b>{items.length}</b></button><button>▥ <span>待读</span><b>{items.filter(x=>x.status==='待读').length}</b></button><button>✓ <span>已读</span></button><button>☆ <span>收藏</span></button></nav><div className="side-tags"><small>标签</small>{tags.slice(1,5).map(t=><button onClick={()=>setTag(t)} key={t}># {t}</button>)}</div><div className="side-foot"><button>⚙ 偏好设置</button><small>本地数据库 · 已同步</small></div></aside><main><header><div><span className="crumb">RESEARCH / LIBRARY</span><h1>所有文献</h1></div><div className="actions"><button className="outline" onClick={download}>↓ 导出引用</button><button className="primary" onClick={()=>setShow(true)}>＋ 添加文献</button></div></header><div className="toolbar"><div className="search">⌕<input placeholder="搜索标题、作者或摘要…" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button onClick={()=>setQuery('')}>×</button>}</div><div className="tag-filter">{tags.map(t=><button className={tag===t?'on':''} onClick={()=>setTag(t)} key={t}>{t}</button>)}</div></div><div className="body"><section className="paper-list">{filtered.map(p=><button className={'paper '+(selected===p.id?'selected':'')} onClick={()=>setSelected(p.id)} key={p.id}><div className="paper-year">{p.year}</div><div className="paper-copy"><h3>{p.title}</h3><p>{p.authors}</p><div>{p.tags.map(t=><span key={t}>#{t}</span>)}</div></div><small className={'status '+p.status}>{p.status}</small></button>)}{!filtered.length&&<div className="no-result">没有找到匹配的文献</div>}</section><section className="detail">{cur&&<><div className="detail-top"><span className="status reading">{cur.status}</span><button onClick={()=>setNotice('已加入收藏')}>☆ 收藏</button></div><h2>{cur.title}</h2><p className="authors">{cur.authors}</p><div className="cite-actions"><button onClick={bib}>▣ 复制引用</button><button onClick={()=>update('status',cur.status==='已读'?'待读':'已读')}>{cur.status==='已读'?'标记为待读':'标记为已读'}</button></div><div className="detail-section"><h4>摘要 <span>ABSTRACT</span></h4><p>{cur.abstract}</p></div><div className="detail-section"><h4>出版信息 <span>PUBLICATION</span></h4><div className="pub-grid"><div><small>出版物</small><strong>{cur.venue}</strong></div><div><small>年份</small><strong>{cur.year}</strong></div></div></div><div className="detail-section"><h4>引用文本 <span>BIBTEX / TEXT</span></h4><div className="cite-box">{cur.cite}<button onClick={bib}>复制</button></div></div><div className="detail-section"><h4>我的笔记 <span>PRIVATE</span></h4><textarea className="notes" placeholder="记录你的阅读想法…" value={cur.notes||''} onChange={e=>update('notes',e.target.value)}/></div></>}</section></div></main>{show&&<div className="modal-bg"><div className="modal"><button className="close" onClick={()=>setShow(false)}>×</button><span className="crumb">NEW REFERENCE</span><h2>添加一篇文献</h2><label>标题<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="论文或书籍标题"/></label><label>作者<input value={form.authors} onChange={e=>setForm({...form,authors:e.target.value})}/></label><div className="two"><label>年份<input type="number" value={form.year} onChange={e=>setForm({...form,year:e.target.value})}/></label><label>出版物<input value={form.venue} onChange={e=>setForm({...form,venue:e.target.value})}/></label></div><label>关键词<input value={form.tags} onChange={e=>setForm({...form,tags:e.target.value})} placeholder="用逗号分隔"/></label><label>摘要<textarea rows="3" value={form.abstract} onChange={e=>setForm({...form,abstract:e.target.value})}/></label><button className="primary full" onClick={add}>保存文献</button></div></div>}{notice&&<div className="toast">{notice}</div>}</div>};createRoot(document.getElementById('root')).render(<App/>);
+import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles.css';
+import { store, useStore } from './data/store.js';
+import * as P from './rules/policy.js';
+import ManuscriptView from './ui/ManuscriptView.jsx';
+import ReviewersView from './ui/ReviewersView.jsx';
+import ConflictsView from './ui/ConflictsView.jsx';
+import {
+  AssignModal, ReassignModal, RecuseModal, ReviewModal,
+  DecisionModal, VersionModal, ManuscriptModal, ReviewerModal,
+} from './ui/Modals.jsx';
+
+const pad = (n) => String(n).padStart(2, '0');
+
+function makeFmt(now) {
+  const date = (ts) => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  // 时限：在途任务给出绝对截止时间与剩余/逾期天数；其余状态显示 —
+  const deadline = (ts, status) => {
+    if (!ts) return '—';
+    if (status === 'submitted' || status === 'void' || status === 'blocked' || status === 'resolved') {
+      return '—';
+    }
+    const diffDays = Math.ceil((ts - now) / (24 * 60 * 60 * 1000));
+    const tail = diffDays > 0 ? `剩 ${diffDays} 天` : diffDays === 0 ? '今日截止' : `逾期 ${-diffDays} 天`;
+    return `${date(ts)} · ${tail}`;
+  };
+  return { date, deadline };
+}
+
+function App() {
+  const s = useStore();
+  const [view, setView] = useState('manuscripts');
+  const [selectedId, setSelectedId] = useState(s.manuscripts[0]?.id);
+  const [modal, setModal] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const fmt = makeFmt(Date.now());
+  const close = () => setModal(null);
+  const notify = (result, okMsg) =>
+    setToast({ msg: result.ok ? okMsg : result.message || '操作被规则拒绝', kind: result.ok ? 'ok' : 'err' });
+  const onAction = setModal;
+
+  const selected = P.getManuscript(s, selectedId) || s.manuscripts[0];
+  const openCount = s.restrictions.filter((r) => r.status === 'open').length;
+
+  const nav = [
+    { key: 'manuscripts', icon: '▤', label: '稿件台', badge: s.manuscripts.length },
+    { key: 'conflicts', icon: '⚡', label: '冲突与回避', badge: openCount, warn: openCount > 0 },
+    { key: 'reviewers', icon: '☷', label: '审稿人名册', badge: s.reviewers.length },
+  ];
+
+  return (
+    <div className="app">
+      <aside>
+        <div className="logo"><span>∴</span> PREPRINT DESK</div>
+        <div className="library-head">
+          <span>预印本审稿台</span>
+          <strong>{s.manuscripts.length}<small> 篇在审稿件</small></strong>
+        </div>
+        <nav>
+          {nav.map((n) => (
+            <button key={n.key} className={view === n.key ? 'active' : ''} onClick={() => setView(n.key)}>
+              {n.icon} <span>{n.label}</span>
+              <b className={n.warn ? 'nav-warn' : ''}>{n.badge}</b>
+            </button>
+          ))}
+        </nav>
+        <div className="side-foot">
+          <button onClick={() => {
+            if (window.confirm('恢复演示数据？当前本地修改将被清除。')) {
+              store.resetDemo();
+              setSelectedId(store.getState().manuscripts[0].id);
+              setToast({ msg: '已恢复演示数据', kind: 'ok' });
+            }
+          }}>↺ 恢复演示数据</button>
+          <small>本地数据库 · 版本/任务/决定联动</small>
+        </div>
+      </aside>
+
+      <main>
+        <header>
+          <div>
+            <span className="crumb">RESEARCH / {view === 'manuscripts' ? 'DESK' : view.toUpperCase()}</span>
+            <h1>{view === 'manuscripts' ? '稿件台' : view === 'conflicts' ? '冲突与回避' : '审稿人名册'}</h1>
+          </div>
+          <div className="actions">
+            {view === 'reviewers' && (
+              <button className="primary" onClick={() => setModal({ type: 'reviewer' })}>＋ 登记审稿人</button>
+            )}
+            {view === 'manuscripts' && (
+              <button className="primary" onClick={() => setModal({ type: 'manuscript' })}>＋ 登记新稿件</button>
+            )}
+          </div>
+        </header>
+
+        {view === 'manuscripts' && selected && (
+          <ManuscriptView
+            key={selected.id}
+            s={s}
+            selectedId={selected.id}
+            onSelect={setSelectedId}
+            fmt={fmt}
+            onAction={onAction}
+            notify={notify}
+          />
+        )}
+        {view === 'reviewers' && <ReviewersView s={s} fmt={fmt} />}
+        {view === 'conflicts' && (
+          <ConflictsView
+            s={s}
+            fmt={fmt}
+            onAction={onAction}
+            goManuscript={(id) => { setSelectedId(id); setView('manuscripts'); }}
+          />
+        )}
+      </main>
+
+      {/* 弹窗编排：全部动作经规则层校验后写 store，刷新后由同一份持久状态重建 */}
+      {modal?.type === 'assign' && (
+        <AssignModal s={s} m={selected} version={P.getVersion(selected, selected.currentVersion)}
+          onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'reassign' && (
+        <ReassignModal s={s} flag={modal.flag} onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'recuse' && (
+        <RecuseModal s={s} a={modal.assignment} onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'review' && (
+        <ReviewModal a={modal.assignment} onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'decision' && (
+        <DecisionModal s={s} m={selected} onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'version' && (
+        <VersionModal m={selected} onClose={close} notify={notify} />
+      )}
+      {modal?.type === 'manuscript' && (
+        <ManuscriptModal onClose={close} notify={notify}
+          onCreated={(id) => setSelectedId(id)} />
+      )}
+      {modal?.type === 'reviewer' && <ReviewerModal onClose={close} notify={notify} />}
+
+      {toast && <div className={'toast ' + toast.kind}>{toast.msg}</div>}
+    </div>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
